@@ -37,4 +37,4 @@ axs[1, 1].set_ylabel('Memory (MB)')
 axs[1, 1].grid(True)
 
 plt.tight_layout()
-plt.savefig("results/09_insert_customer.png")
+plt.savefig("results/08_insert_customer.png")
