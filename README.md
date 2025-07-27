@@ -65,11 +65,28 @@ SELECT * FROM rental WHERE customer_id = :random_id ORDER BY rental_date DESC LI
 ![03_customer_last_rental](results/03_customer_last_rental.png)
 
 - Based on CPU utilization, the optimal connection pool size is 2.
+- Based on memory usage, there is no significant increase.
 - Based on TPS performance, the optimal connection pool size is 20.
-- Latency begins to increase noticeably beyond 20 clients, but memory usage increases linearly and does not become a bottleneck in this test.
+- Based on latency, there is no significant increase.
 - Indexing the `rental_date` column significantly improves performance.
 
 ### 04. Count Rental per Customer (Group By)
+
+#### Query
+
+```sql
+SELECT customer_id, COUNT(*) AS rental_count FROM rental GROUP BY customer_id;
+```
+
+#### Result
+
+![04_count_rental_per_customer](results/04_count_rental_per_customer.png)
+
+- CPU utilization reaches its maximum with just 2 connections.
+- Memory usage increases gradually but does not show abrupt spikes.
+- TPS performance plateaus around 10 connections, with a maximum TPS of ~875, which is significantly lower than simple queries.
+- Latency increases sharply beyond 10 connections.
+- **Group By queries are highly resource-intensive**: TPS drops by 10-20x compared to primary key lookups, making them less suitable for high-concurrency environments.
 
 ### 05. Film Rental History (Join)
 
