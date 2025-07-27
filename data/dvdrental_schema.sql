@@ -1,46 +1,19 @@
 --
--- NOTE:
---
--- File paths need to be edited. Search for $$PATH$$ and
--- replace it with the path to the directory containing
--- the extracted data files.
---
---
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 11.3
--- Dumped by pg_dump version 11.2
+-- Dumped from database version 17.5 (Debian 17.5-1.pgdg120+1)
+-- Dumped by pg_dump version 17.5 (Debian 17.5-1.pgdg120+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
-SET client_min_messages = warning;
-SET row_security = off;
-
-DROP DATABASE dvdrental;
---
--- Name: dvdrental; Type: DATABASE; Schema: -; Owner: postgres
---
-
-CREATE DATABASE dvdrental WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'English_United States.1252' LC_CTYPE = 'English_United States.1252';
-
-
-ALTER DATABASE dvdrental OWNER TO postgres;
-
-\connect dvdrental
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
+SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
@@ -269,11 +242,11 @@ CREATE SEQUENCE public.customer_customer_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.customer_customer_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.customer_customer_id_seq OWNER TO postgres;
 
 SET default_tablespace = '';
 
-SET default_with_oids = false;
+SET default_table_access_method = heap;
 
 --
 -- Name: customer; Type: TABLE; Schema: public; Owner: postgres
@@ -383,7 +356,7 @@ CREATE SEQUENCE public.actor_actor_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.actor_actor_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.actor_actor_id_seq OWNER TO postgres;
 
 --
 -- Name: actor; Type: TABLE; Schema: public; Owner: postgres
@@ -411,7 +384,7 @@ CREATE SEQUENCE public.category_category_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.category_category_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.category_category_id_seq OWNER TO postgres;
 
 --
 -- Name: category; Type: TABLE; Schema: public; Owner: postgres
@@ -438,7 +411,7 @@ CREATE SEQUENCE public.film_film_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.film_film_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.film_film_id_seq OWNER TO postgres;
 
 --
 -- Name: film; Type: TABLE; Schema: public; Owner: postgres
@@ -510,7 +483,7 @@ CREATE VIEW public.actor_info AS
   GROUP BY a.actor_id, a.first_name, a.last_name;
 
 
-ALTER TABLE public.actor_info OWNER TO postgres;
+ALTER VIEW public.actor_info OWNER TO postgres;
 
 --
 -- Name: address_address_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -524,7 +497,7 @@ CREATE SEQUENCE public.address_address_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.address_address_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.address_address_id_seq OWNER TO postgres;
 
 --
 -- Name: address; Type: TABLE; Schema: public; Owner: postgres
@@ -556,7 +529,7 @@ CREATE SEQUENCE public.city_city_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.city_city_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.city_city_id_seq OWNER TO postgres;
 
 --
 -- Name: city; Type: TABLE; Schema: public; Owner: postgres
@@ -584,7 +557,7 @@ CREATE SEQUENCE public.country_country_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.country_country_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.country_country_id_seq OWNER TO postgres;
 
 --
 -- Name: country; Type: TABLE; Schema: public; Owner: postgres
@@ -622,7 +595,7 @@ CREATE VIEW public.customer_list AS
      JOIN public.country ON ((city.country_id = country.country_id)));
 
 
-ALTER TABLE public.customer_list OWNER TO postgres;
+ALTER VIEW public.customer_list OWNER TO postgres;
 
 --
 -- Name: film_list; Type: VIEW; Schema: public; Owner: postgres
@@ -645,7 +618,7 @@ CREATE VIEW public.film_list AS
   GROUP BY film.film_id, film.title, film.description, category.name, film.rental_rate, film.length, film.rating;
 
 
-ALTER TABLE public.film_list OWNER TO postgres;
+ALTER VIEW public.film_list OWNER TO postgres;
 
 --
 -- Name: inventory_inventory_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -659,7 +632,7 @@ CREATE SEQUENCE public.inventory_inventory_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.inventory_inventory_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.inventory_inventory_id_seq OWNER TO postgres;
 
 --
 -- Name: inventory; Type: TABLE; Schema: public; Owner: postgres
@@ -687,7 +660,7 @@ CREATE SEQUENCE public.language_language_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.language_language_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.language_language_id_seq OWNER TO postgres;
 
 --
 -- Name: language; Type: TABLE; Schema: public; Owner: postgres
@@ -723,7 +696,7 @@ CREATE VIEW public.nicer_but_slower_film_list AS
   GROUP BY film.film_id, film.title, film.description, category.name, film.rental_rate, film.length, film.rating;
 
 
-ALTER TABLE public.nicer_but_slower_film_list OWNER TO postgres;
+ALTER VIEW public.nicer_but_slower_film_list OWNER TO postgres;
 
 --
 -- Name: payment_payment_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -737,7 +710,7 @@ CREATE SEQUENCE public.payment_payment_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.payment_payment_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.payment_payment_id_seq OWNER TO postgres;
 
 --
 -- Name: payment; Type: TABLE; Schema: public; Owner: postgres
@@ -767,7 +740,7 @@ CREATE SEQUENCE public.rental_rental_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.rental_rental_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.rental_rental_id_seq OWNER TO postgres;
 
 --
 -- Name: rental; Type: TABLE; Schema: public; Owner: postgres
@@ -803,7 +776,7 @@ CREATE VIEW public.sales_by_film_category AS
   ORDER BY (sum(p.amount)) DESC;
 
 
-ALTER TABLE public.sales_by_film_category OWNER TO postgres;
+ALTER VIEW public.sales_by_film_category OWNER TO postgres;
 
 --
 -- Name: staff_staff_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -817,7 +790,7 @@ CREATE SEQUENCE public.staff_staff_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.staff_staff_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.staff_staff_id_seq OWNER TO postgres;
 
 --
 -- Name: staff; Type: TABLE; Schema: public; Owner: postgres
@@ -852,7 +825,7 @@ CREATE SEQUENCE public.store_store_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.store_store_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.store_store_id_seq OWNER TO postgres;
 
 --
 -- Name: store; Type: TABLE; Schema: public; Owner: postgres
@@ -888,7 +861,7 @@ CREATE VIEW public.sales_by_store AS
   ORDER BY cy.country, c.city;
 
 
-ALTER TABLE public.sales_by_store OWNER TO postgres;
+ALTER VIEW public.sales_by_store OWNER TO postgres;
 
 --
 -- Name: staff_list; Type: VIEW; Schema: public; Owner: postgres
@@ -909,218 +882,7 @@ CREATE VIEW public.staff_list AS
      JOIN public.country ON ((city.country_id = country.country_id)));
 
 
-ALTER TABLE public.staff_list OWNER TO postgres;
-
---
--- Data for Name: actor; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.actor (actor_id, first_name, last_name, last_update) FROM stdin;
-\.
-COPY public.actor (actor_id, first_name, last_name, last_update) FROM '$$PATH$$/3057.dat';
-
---
--- Data for Name: address; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.address (address_id, address, address2, district, city_id, postal_code, phone, last_update) FROM stdin;
-\.
-COPY public.address (address_id, address, address2, district, city_id, postal_code, phone, last_update) FROM '$$PATH$$/3065.dat';
-
---
--- Data for Name: category; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.category (category_id, name, last_update) FROM stdin;
-\.
-COPY public.category (category_id, name, last_update) FROM '$$PATH$$/3059.dat';
-
---
--- Data for Name: city; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.city (city_id, city, country_id, last_update) FROM stdin;
-\.
-COPY public.city (city_id, city, country_id, last_update) FROM '$$PATH$$/3067.dat';
-
---
--- Data for Name: country; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.country (country_id, country, last_update) FROM stdin;
-\.
-COPY public.country (country_id, country, last_update) FROM '$$PATH$$/3069.dat';
-
---
--- Data for Name: customer; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.customer (customer_id, store_id, first_name, last_name, email, address_id, activebool, create_date, last_update, active) FROM stdin;
-\.
-COPY public.customer (customer_id, store_id, first_name, last_name, email, address_id, activebool, create_date, last_update, active) FROM '$$PATH$$/3055.dat';
-
---
--- Data for Name: film; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.film (film_id, title, description, release_year, language_id, rental_duration, rental_rate, length, replacement_cost, rating, last_update, special_features, fulltext) FROM stdin;
-\.
-COPY public.film (film_id, title, description, release_year, language_id, rental_duration, rental_rate, length, replacement_cost, rating, last_update, special_features, fulltext) FROM '$$PATH$$/3061.dat';
-
---
--- Data for Name: film_actor; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.film_actor (actor_id, film_id, last_update) FROM stdin;
-\.
-COPY public.film_actor (actor_id, film_id, last_update) FROM '$$PATH$$/3062.dat';
-
---
--- Data for Name: film_category; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.film_category (film_id, category_id, last_update) FROM stdin;
-\.
-COPY public.film_category (film_id, category_id, last_update) FROM '$$PATH$$/3063.dat';
-
---
--- Data for Name: inventory; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.inventory (inventory_id, film_id, store_id, last_update) FROM stdin;
-\.
-COPY public.inventory (inventory_id, film_id, store_id, last_update) FROM '$$PATH$$/3071.dat';
-
---
--- Data for Name: language; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.language (language_id, name, last_update) FROM stdin;
-\.
-COPY public.language (language_id, name, last_update) FROM '$$PATH$$/3073.dat';
-
---
--- Data for Name: payment; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.payment (payment_id, customer_id, staff_id, rental_id, amount, payment_date) FROM stdin;
-\.
-COPY public.payment (payment_id, customer_id, staff_id, rental_id, amount, payment_date) FROM '$$PATH$$/3075.dat';
-
---
--- Data for Name: rental; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.rental (rental_id, rental_date, inventory_id, customer_id, return_date, staff_id, last_update) FROM stdin;
-\.
-COPY public.rental (rental_id, rental_date, inventory_id, customer_id, return_date, staff_id, last_update) FROM '$$PATH$$/3077.dat';
-
---
--- Data for Name: staff; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.staff (staff_id, first_name, last_name, address_id, email, store_id, active, username, password, last_update, picture) FROM stdin;
-\.
-COPY public.staff (staff_id, first_name, last_name, address_id, email, store_id, active, username, password, last_update, picture) FROM '$$PATH$$/3079.dat';
-
---
--- Data for Name: store; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.store (store_id, manager_staff_id, address_id, last_update) FROM stdin;
-\.
-COPY public.store (store_id, manager_staff_id, address_id, last_update) FROM '$$PATH$$/3081.dat';
-
---
--- Name: actor_actor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.actor_actor_id_seq', 200, true);
-
-
---
--- Name: address_address_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.address_address_id_seq', 605, true);
-
-
---
--- Name: category_category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.category_category_id_seq', 16, true);
-
-
---
--- Name: city_city_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.city_city_id_seq', 600, true);
-
-
---
--- Name: country_country_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.country_country_id_seq', 109, true);
-
-
---
--- Name: customer_customer_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.customer_customer_id_seq', 599, true);
-
-
---
--- Name: film_film_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.film_film_id_seq', 1000, true);
-
-
---
--- Name: inventory_inventory_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.inventory_inventory_id_seq', 4581, true);
-
-
---
--- Name: language_language_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.language_language_id_seq', 6, true);
-
-
---
--- Name: payment_payment_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.payment_payment_id_seq', 32098, true);
-
-
---
--- Name: rental_rental_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.rental_rental_id_seq', 16049, true);
-
-
---
--- Name: staff_staff_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.staff_staff_id_seq', 2, true);
-
-
---
--- Name: store_store_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.store_store_id_seq', 2, true);
-
+ALTER VIEW public.staff_list OWNER TO postgres;
 
 --
 -- Name: actor actor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1365,105 +1127,105 @@ CREATE UNIQUE INDEX idx_unq_rental_rental_date_inventory_id_customer_id ON publi
 -- Name: film film_fulltext_trigger; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER film_fulltext_trigger BEFORE INSERT OR UPDATE ON public.film FOR EACH ROW EXECUTE PROCEDURE tsvector_update_trigger('fulltext', 'pg_catalog.english', 'title', 'description');
+CREATE TRIGGER film_fulltext_trigger BEFORE INSERT OR UPDATE ON public.film FOR EACH ROW EXECUTE FUNCTION tsvector_update_trigger('fulltext', 'pg_catalog.english', 'title', 'description');
 
 
 --
 -- Name: actor last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.actor FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.actor FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: address last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.address FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.address FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: category last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.category FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.category FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: city last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.city FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.city FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: country last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.country FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.country FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: customer last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.customer FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.customer FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: film last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.film FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.film FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: film_actor last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_actor FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_actor FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: film_category last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_category FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_category FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: inventory last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.inventory FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.inventory FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: language last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.language FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.language FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: rental last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.rental FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.rental FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: staff last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.staff FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.staff FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
 -- Name: store last_updated; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER last_updated BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE PROCEDURE public.last_updated();
+CREATE TRIGGER last_updated BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE FUNCTION public.last_updated();
 
 
 --
