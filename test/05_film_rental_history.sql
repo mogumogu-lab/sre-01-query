@@ -1,4 +1,5 @@
 -- 5. 특정 영화의 대여 이력 (JOIN)
+\set random_film_id random(1, 1000)
 SELECT f.title, r.rental_date, c.first_name, c.last_name
 FROM rental r
 JOIN inventory i ON r.inventory_id = i.inventory_id

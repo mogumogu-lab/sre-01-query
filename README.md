@@ -90,14 +90,72 @@ SELECT customer_id, COUNT(*) AS rental_count FROM rental GROUP BY customer_id;
 
 ### 05. Film Rental History (Join)
 
+#### Query
+
+```sql
+\set random_film_id random(1, 1000)
+SELECT f.title, r.rental_date, c.first_name, c.last_name
+FROM rental r
+JOIN inventory i ON r.inventory_id = i.inventory_id
+JOIN film f ON i.film_id = f.film_id
+JOIN customer c ON r.customer_id = c.customer_id
+WHERE f.film_id = :random_film_id
+ORDER BY r.rental_date DESC
+LIMIT 10;
+```
+
+#### Result
+
+![05_film_rental_history](results/05_film_rental_history.png)
+
+- CPU utilization reaches its maximum (200%) with just 2 concurrent connections, indicating full resource saturation.
+- Memory usage increases steadily as the number of clients grows, but there are no abrupt spikes or out-of-memory risks in this test.
+- TPS (transactions per second) peaks at around 3,400 with 5~10 connections, then slightly decreases as concurrency increases further.
+- Latency remains low at low concurrency, but increases sharply beyond 10 connections, reaching nearly 30ms at 90 clients.
+- Proper indexing dramatically improves join query performance: Efficient use of indexes keeps latency low and TPS high compared to group-by queries, even under higher load.
+
 ### 06. Top 10 Film (Join + Group By)
 
-### 07.Top 5 Customer Month (Join + Group By)
+#### Query
 
-### 08. Update Customer (Update)
+```sql
+```
 
-### 09. Insert Customer (Insert)
+#### Result
 
-### 10. Update Return (Update)
+### 07. Update Customer (Update)
 
-### 11. New Rental Transaction (Insert)
+#### Query
+
+```sql
+```
+
+#### Result
+
+### 08. Insert Customer (Insert)
+
+#### Query
+
+```sql
+```
+
+
+#### Result
+
+### 09. Update Return (Update)
+
+#### Query
+
+```sql
+```
+
+#### Result
+
+### 10. New Rental Transaction (Insert)
+
+#### Query
+
+```sql
+```
+
+#### Result
