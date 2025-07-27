@@ -50,9 +50,11 @@ SELECT * FROM film WHERE title ILIKE '%' || chr(:alpha_id) || '%';
 
 ![02_search_by_title](results/02_search_by_title.png)
 
-- LIKE 연산은 Full Scan이거나, 인덱스를 타도 부분적으로만 빠릅니다.
-- 보통 PK 조회 대비 TPS는 확 떨어지고, Latency는 확 늘어납니다.
-- 동시 요청 수가 많아지면, 비효율 쿼리가 누적되어, TPS는 거의 변하지 않거나 오히려 줄고, Latency가 기하급수적으로 증가합니다.
+- The ILIKE operation triggers either a full table scan or, at best, a partial index scan.
+As a result, query performance is significantly lower compared to primary key lookups.
+- TPS (transactions per second) drops sharply relative to simple PK queries, and latency increases substantially, especially as concurrency rises.
+- As the number of concurrent requests grows, the inefficiency of the LIKE/ILIKE query accumulates: TPS plateaus or even decreases, while latency escalates exponentially under heavy load.
+- Pattern-matching queries like this can become major bottlenecks in high-traffic environments, and should be avoided or optimized through pre-filtering, indexing strategies, or full-text search solutions if possible.
 
 
 
@@ -155,39 +157,50 @@ LIMIT 10;
 #### Query
 
 ```sql
+\set random_id random(1, 599)
+UPDATE customer SET address_id = (
+    SELECT address_id FROM address
+    OFFSET floor(random() * (SELECT count(*) FROM address))
+    LIMIT 1
+) WHERE customer_id = :random_id;
 ```
 
 #### Result
 
+![07_update_customer](results/07_update_customer.png)
 
+- CPU utilization climbs toward its maximum (200%) as client concurrency increases, but remains below saturation until around 10 clients, showing lower immediate pressure compared to group-by queries.
+- Memory usage increases steadily with higher concurrency, and shows a slightly larger growth trend than read-only queries, but no abrupt spikes or out-of-memory issues are observed during this test.
+- TPS (transactions per second) peaks at approximately 3,600 with 10 concurrent connections, then gradually decreases as concurrency increases, indicating some lock contention and write bottlenecks as load grows.
+- Latency remains low and stable up to moderate concurrency, but increases noticeably beyond 20 clients, reaching ~31ms at 90 clients.
+- Compared to complex group-by and join queries, this single-row UPDATE operation demonstrates much higher TPS and lower latency under load, reflecting that single-row writes are more efficient and less resource-intensive as long as row-level contention is minimal.
 
 ### 08. Insert Customer (Insert)
 
 #### Query
 
 ```sql
-```
-
-
-
-#### Result
-
-### 09. Update Return (Update)
-
-#### Query
-
-```sql
-```
-
-
-
-#### Result
-
-### 10. New Rental Transaction (Insert)
-
-#### Query
-
-```sql
+\set random_id random(1, 1000000)
+\set store_id random(1, 2)
+INSERT INTO customer (store_id, first_name, last_name, email, address_id, active)
+VALUES (
+  :store_id,
+  'first_' || :random_id,
+  'last_'  || :random_id,
+  'test'   || :random_id || '@example.com',
+  (SELECT address_id FROM address OFFSET floor(random() * (SELECT count(*) FROM address)) LIMIT 1),
+  1
+);
 ```
 
 #### Result
+
+![08_insert_customer](results/08_insert_customer.png)
+
+- CPU utilization climbs toward its maximum (200%) as client concurrency increases, but stays below saturation until around 10 clients, demonstrating lower immediate pressure compared to heavy group-by or join queries.
+- Memory usage rises steadily with higher concurrency, showing a moderate growth trend similar to UPDATE operations; however, there are no abrupt spikes or out-of-memory incidents during this test.
+- TPS (transactions per second) peaks at approximately 7,000 with 20–50 concurrent connections, then gradually decreases as concurrency increases further, indicating the system reaches its write throughput limit and some lock contention emerges.
+- Latency remains very low and stable up to moderate concurrency, only increasing beyond 50 clients, and still stays within acceptable levels (peaking at ~14ms with 90 clients).
+- Compared to complex group-by, join, or update queries, this single-row INSERT operation delivers much higher TPS and lower latency under load, highlighting that single-row insertions are highly efficient and scale well as long as there is minimal contention and index/constraint overhead.
+
+
