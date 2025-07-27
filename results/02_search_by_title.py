@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 
-clients = [5, 10, 20, 30, 40]
-tps = [900, 1600, 2500, 2800, 2900]
-latency = [5.2, 6.0, 8.1, 12.5, 25.0]
-cpu = [30, 45, 70, 85, 99]
+clients = [5, 10, 20, 50, 90]
+tps = [944, 33111, 34011, 34046, 32670]
+latency = [5.2, 0.302, 0.588, 1.469, 2.755]
+cpu = [200, 200, 200, 200, 200]
 
 plt.figure(figsize=(10, 6))
 
@@ -20,5 +20,5 @@ plt.ylabel("Value")
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-plt.savefig("db_benchmark_chart.png")
+plt.savefig("01_simple_select_result.png")
 plt.show()
