@@ -204,3 +204,13 @@ VALUES (
 - Compared to complex group-by, join, or update queries, this single-row INSERT operation delivers much higher TPS and lower latency under load, highlighting that single-row insertions are highly efficient and scale well as long as there is minimal contention and index/constraint overhead.
 
 
+## Summary
+
+- On a t3.medium instance (2 vCPUs, 4GB RAM),the database consistently reaches CPU saturation (200%) well before memory becomes a limiting factor, with TPS and latency plateauing or degrading as concurrency increases.
+- The optimal connection pool size for most queries is in the range of 2–10. Beyond this, there is no gain in throughput, and only latency rises sharply.
+- Simple PK lookups and single-row UPDATE/INSERT operations maintain high efficiency up to 10–50 connections.
+- Pattern-matching (LIKE/ILIKE), GROUP BY, and complex JOIN/aggregation queries result in a dramatic drop in TPS and exponential latency increases, making them unsuitable for high-concurrency, real-time workloads.
+- Memory usage remains well below 1GB even under heavy load, increasing linearly with concurrency and never causing out-of-memory issues during these tests.
+- In practice, for t3.medium-class servers:
+  - The connection pool should be kept at 2–10,
+  - Heavy analytical or pattern-matching queries should be handled via batch processing, caching, or offloaded to specialized systems.
