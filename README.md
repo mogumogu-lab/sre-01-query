@@ -54,6 +54,21 @@ SELECT * FROM film WHERE title ILIKE '%' || chr(:alpha_id) || '%';
 
 ### 03. Customer Last Rental (Order By)
 
+#### Query
+
+```
+\set random_id random(1, 599)
+SELECT * FROM rental WHERE customer_id = :random_id ORDER BY rental_date DESC LIMIT 1;
+```
+### Result
+
+![03_customer_last_rental](results/03_customer_last_rental.png)
+
+- Based on CPU utilization, the optimal connection pool size is 2.
+- Based on TPS performance, the optimal connection pool size is 20.
+- Latency begins to increase noticeably beyond 20 clients, but memory usage increases linearly and does not become a bottleneck in this test.
+- Indexing the `rental_date` column significantly improves performance.
+
 ### 04. Count Rental per Customer (Group By)
 
 ### 05. Film Rental History (Join)
