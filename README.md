@@ -54,5 +54,25 @@ pg_restore -U postgres -d dvdrental /data/dvdrental.tar
 ### Send SQL
 
 ```bash
-pgbench -h postgres-test -p 5432 -U postgres -d dvdrental -c 10 -T 60 -f test.sql --no-vacuum
+pgbench -h postgres-test -p 5432 -U postgres -d dvdrental -c 60 -T 10 -f test/02_simple_select.sql --no-vacuum
 ```
+
+## Threshold
+
+### 01. Simple Select
+
+```mermaid
+graph TD
+  A[클라이언트 수 ↑] --> B[TPS ↑]
+  A --> C[Latency ↑]
+  A --> D[CPU% ↑]
+```
+
+### 02. Search by Title
+
+### 03. Customer Last Rental
+
+### 04. Count Rental per Customer
+
+
+
