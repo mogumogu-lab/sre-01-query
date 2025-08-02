@@ -51,11 +51,18 @@ Planning Time: 0.091 ms
 Execution Time: 0.045 ms
 ```
 
+There is a default index on the `title_basics` table because PostgreSQL automatically creates a primary key index when a primary key constraint is defined. This index allows the query to efficiently locate the row with `tconst = 'tt1234567'` without performing a full table scan.
+
 ### 02. Pattern Matching (ILIKE)
 
 #### Query
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX idx_primarytitle_trgm ON title_basics USING gin (primarytitle gin_trgm_ops);
+DROP INDEX IF EXISTS idx_primarytitle_trgm;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM title_basics WHERE primaryTitle ILIKE '%naruto%' LIMIT 100;
 ```
@@ -76,6 +83,42 @@ Limit  (cost=1000.00..23498.14 rows=100 width=84) (actual time=26.547..2415.560 
 Planning Time: 0.256 ms
 Execution Time: 2415.612 ms
 ```
+
+#### Result (with Index)
+
+```plaintext
+Limit  (cost=77.97..454.93 rows=100 width=84) (actual time=2.748..3.281 rows=100 loops=1)
+  Buffers: shared hit=26 read=118
+  ->  Bitmap Heap Scan on title_basics  (cost=77.97..4039.81 rows=1051 width=84) (actual time=2.747..3.268 rows=100 loops=1)
+        Recheck Cond: (primarytitle ~~* '%naruto%'::text)
+        Heap Blocks: exact=90
+        Buffers: shared hit=26 read=118
+        ->  Bitmap Index Scan on idx_primarytitle_trgm  (cost=0.00..77.71 rows=1051 width=0) (actual time=2.701..2.701 rows=419 loops=1)
+              Index Cond: (primarytitle ~~* '%naruto%'::text)
+              Buffers: shared hit=26 read=28
+Planning:
+  Buffers: shared hit=42 read=27 dirtied=3
+Planning Time: 1.402 ms
+Execution Time: 3.303 ms
+```
+
+When using `ILIKE '%keyword%'` in PostgreSQL, the query is normally very slow because it requires a **full table scan**—the database must check every row to see if the pattern matches anywhere in the text. This is inherently inefficient for large tables.
+
+However, by creating a **GIN index with the `gin_trgm_ops` operator** (which comes from the `pg_trgm` extension), the database pre-processes each string into **trigrams (three-character chunks)** and builds an index based on these. When you run the same ILIKE query, PostgreSQL can quickly narrow down candidate rows using the trigram index, making the search dramatically faster—sometimes by hundreds or thousands of times.
+
+For example, without the index, the query took about **2,400 ms**, but with the GIN trigram index, it dropped to just **3 ms**.
+This is a massive improvement.
+
+**Downsides:**
+
+* Building the GIN trigram index itself can take a long time—especially on large tables. In my case, it took over a minute to create the index.
+* While the index speeds up read/search queries, it introduces overhead for write operations (INSERT/UPDATE/DELETE), as the index must be updated for each change.
+* Also, if your connection pool is small, building the index can block other queries, as it may use significant resources.
+
+**Conclusion:**
+
+* GIN trigram indexes are very effective for accelerating ILIKE pattern searches,
+* But you should be careful when creating or rebuilding the index on large tables, especially in environments with limited resources or heavy write loads.
 
 ### 03. Join: Top Rated Movies
 
