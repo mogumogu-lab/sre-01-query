@@ -1,19 +1,31 @@
-# Load Test
+# Query Test
 
-This repository contains scripts and configurations for benchmarking a PostgreSQL database using `pgbench`. The focus is on testing various SQL queries to evaluate performance under different loads.
+This repository contains scripts and configurations for benchmarking PostgreSQL database performance using pgbench. The primary objective is to conduct individual query performance testing to measure efficiency differences between various SQL queries under identical hardware specifications.
+
+## DataSet
+
+The testing environment utilizes real-world data to ensure meaningful performance measurements:
+
+1. **Data Source**: TSV files from the [IMDB dataset](https://datasets.imdbws.com/) are used to populate the PostgreSQL database
+2. **Schema Reference**: Table structures and relationships follow the specifications defined in [IMDB Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)
+3. **Data Characteristics**: 
+   - Large-scale production dataset with millions of records
+   - Complex relational structure with multiple interconnected tables
+   - Real-world data distribution patterns and constraints
+   - Provides realistic testing scenarios for query performance evaluation
 
 ## Command
 
 ### Restore Database
 
 ```bash
-pg_restore -U postgres -d dvdrental /data/dvdrental.tar
+psql -U postgres -d imdb -f /data/imdb_schema.sql
 ```
 
-### Send SQL
+### Running Tests
 
 ```bash
-pgbench -h postgres-test -p 5432 -U postgres -d dvdrental -c 60 -T 10 -f test/02_simple_select.sql --no-vacuum
+pgbench -h postgres-test -p 5432 -U postgres -d imdb -c 1 -T 10 -f query/test.sql --no-vacuum
 ```
 
 ## Threshold
@@ -22,195 +34,114 @@ pgbench -h postgres-test -p 5432 -U postgres -d dvdrental -c 60 -T 10 -f test/02
 
 #### Query
 
-```
-\set random_id random(1, 599)
-SELECT * FROM customer WHERE customer_id = :random_id;
-```
-
-#### Result
-
-![01_simple_select_result](results/01_simple_select_result.png)
-
-- Based on CPU utilization, the optimal connection pool size is 2.
-- Based on TPS performance, the optimal connection pool size is 20.
-- Latency begins to increase noticeably beyond 20 clients, but memory usage increases linearly and does not become a bottleneck in this test.
-
-
-
-### 02. Search by Title (ILIKE)
-
-#### Query
-
-```
-\set alpha_id random(65, 90)
-SELECT * FROM film WHERE title ILIKE '%' || chr(:alpha_id) || '%';
+```sql
+SELECT * FROM title_basics WHERE tconst = 'tt1234567';
 ```
 
-#### Result
 
-![02_search_by_title](results/02_search_by_title.png)
-
-- The ILIKE operation triggers either a full table scan or, at best, a partial index scan.
-As a result, query performance is significantly lower compared to primary key lookups.
-- TPS (transactions per second) drops sharply relative to simple PK queries, and latency increases substantially, especially as concurrency rises.
-- As the number of concurrent requests grows, the inefficiency of the LIKE/ILIKE query accumulates: TPS plateaus or even decreases, while latency escalates exponentially under heavy load.
-- Pattern-matching queries like this can become major bottlenecks in high-traffic environments, and should be avoided or optimized through pre-filtering, indexing strategies, or full-text search solutions if possible.
-
-
-
-### 03. Customer Last Rental (Order By)
-
-#### Query
-
-```
-\set random_id random(1, 599)
-SELECT * FROM rental WHERE customer_id = :random_id ORDER BY rental_date DESC LIMIT 1;
-```
-### Result
-
-![03_customer_last_rental](results/03_customer_last_rental.png)
-
-- Based on CPU utilization, the optimal connection pool size is 2.
-- Based on memory usage, there is no significant increase.
-- Based on TPS performance, the optimal connection pool size is 20.
-- Based on latency, there is no significant increase.
-- Indexing the `rental_date` column significantly improves performance.
-
-
-
-### 04. Count Rental per Customer (Group By)
+### 02. Pattern Matching (ILIKE)
 
 #### Query
 
 ```sql
-SELECT customer_id, COUNT(*) AS rental_count FROM rental GROUP BY customer_id;
+SELECT * FROM title_basics WHERE primaryTitle ILIKE '%star wars%';
 ```
 
-#### Result
 
-![04_count_rental_per_customer](results/04_count_rental_per_customer.png)
-
-- CPU utilization reaches its maximum with just 2 connections.
-- Memory usage increases gradually but does not show abrupt spikes.
-- TPS performance plateaus around 10 connections, with a maximum TPS of ~875, which is significantly lower than simple queries.
-- Latency increases sharply beyond 10 connections.
-- **Group By queries are highly resource-intensive**: TPS drops by 10-20x compared to primary key lookups, making them less suitable for high-concurrency environments.
-
-
-
-### 05. Film Rental History (Join)
+### 03. Join: Top Rated Movies
 
 #### Query
 
 ```sql
-\set random_film_id random(1, 1000)
-SELECT f.title, r.rental_date, c.first_name, c.last_name
-FROM rental r
-JOIN inventory i ON r.inventory_id = i.inventory_id
-JOIN film f ON i.film_id = f.film_id
-JOIN customer c ON r.customer_id = c.customer_id
-WHERE f.film_id = :random_film_id
-ORDER BY r.rental_date DESC
+-- 평점이 높은 상위 영화 10개
+SELECT b.tconst, b.primaryTitle, r.averageRating
+FROM title_basics b
+JOIN title_ratings r ON b.tconst = r.tconst
+WHERE b.titleType = 'movie'
+ORDER BY r.averageRating DESC
 LIMIT 10;
 ```
 
-#### Result
-
-![05_film_rental_history](results/05_film_rental_history.png)
-
-- CPU utilization reaches its maximum (200%) with just 2 concurrent connections, indicating full resource saturation.
-- Memory usage increases steadily as the number of clients grows, but there are no abrupt spikes or out-of-memory risks in this test.
-- TPS (transactions per second) peaks at around 3,400 with 5~10 connections, then slightly decreases as concurrency increases further.
-- Latency remains low at low concurrency, but increases sharply beyond 10 connections, reaching nearly 30ms at 90 clients.
-- Proper indexing dramatically improves join query performance: Efficient use of indexes keeps latency low and TPS high compared to group-by queries, even under higher load.
-
-
-
-### 06. Top 10 Film (Join + Group By)
+### 04. Multi-condition & Group By: Movie Count by Genre and Year
 
 #### Query
 
 ```sql
-SELECT f.film_id, f.title, COUNT(*) AS rental_count
-FROM rental r
-JOIN inventory i ON r.inventory_id = i.inventory_id
-JOIN film f ON i.film_id = f.film_id
-GROUP BY f.film_id, f.title
-ORDER BY rental_count DESC
+SELECT genres, startYear, COUNT(*) AS movie_count
+FROM title_basics
+WHERE titleType = 'movie'
+  AND startYear BETWEEN 2010 AND 2020
+GROUP BY genres, startYear
+ORDER BY movie_count DESC;
+```
+
+### 05. Multi-table Join: Movie Count by Director
+
+#### Query
+
+```sql
+SELECT c.directors, COUNT(*) AS film_count
+FROM title_crew c
+JOIN title_basics b ON c.tconst = b.tconst
+WHERE b.titleType = 'movie'
+GROUP BY c.directors
+ORDER BY film_count DESC
 LIMIT 10;
 ```
 
-#### Result
 
-- [06_top10_film.png](results/06_top10_film.png)
-
-- CPU utilization quickly reaches its maximum (200%) with just 2 concurrent connections, indicating immediate resource saturation for this workload.
-- Memory usage increases steadily as client concurrency grows, but there are no abrupt spikes or out-of-memory issues observed within this test window.
-- TPS (transactions per second) peaks at approximately 300 with 5 concurrent connections, then gradually declines as concurrency increases, reflecting the heavy computational load of the group-by aggregation.
-- Latency rises sharply with increasing concurrency: it remains moderate up to 10 clients (~34ms), but escalates to over 330ms at 90 clients, illustrating significant response time degradation under heavy load.
-- Compared to indexed join queries, this complex group-by query results in much lower TPS and higher latency, highlighting that group-by and aggregation operations are major performance bottlenecks in high-concurrency environments.
-
-
-
-### 07. Update Customer (Update)
+### 06. Subquery: Filmography of a Specific Actor
 
 #### Query
 
 ```sql
-\set random_id random(1, 599)
-UPDATE customer SET address_id = (
-    SELECT address_id FROM address
-    OFFSET floor(random() * (SELECT count(*) FROM address))
-    LIMIT 1
-) WHERE customer_id = :random_id;
-```
-
-#### Result
-
-![07_update_customer](results/07_update_customer.png)
-
-- CPU utilization climbs toward its maximum (200%) as client concurrency increases, but remains below saturation until around 10 clients, showing lower immediate pressure compared to group-by queries.
-- Memory usage increases steadily with higher concurrency, and shows a slightly larger growth trend than read-only queries, but no abrupt spikes or out-of-memory issues are observed during this test.
-- TPS (transactions per second) peaks at approximately 3,600 with 10 concurrent connections, then gradually decreases as concurrency increases, indicating some lock contention and write bottlenecks as load grows.
-- Latency remains low and stable up to moderate concurrency, but increases noticeably beyond 20 clients, reaching ~31ms at 90 clients.
-- Compared to complex group-by and join queries, this single-row UPDATE operation demonstrates much higher TPS and lower latency under load, reflecting that single-row writes are more efficient and less resource-intensive as long as row-level contention is minimal.
-
-### 08. Insert Customer (Insert)
-
-#### Query
-
-```sql
-\set random_id random(1, 1000000)
-\set store_id random(1, 2)
-INSERT INTO customer (store_id, first_name, last_name, email, address_id, active)
-VALUES (
-  :store_id,
-  'first_' || :random_id,
-  'last_'  || :random_id,
-  'test'   || :random_id || '@example.com',
-  (SELECT address_id FROM address OFFSET floor(random() * (SELECT count(*) FROM address)) LIMIT 1),
-  1
+SELECT b.primaryTitle
+FROM title_basics b
+WHERE b.tconst IN (
+    SELECT p.tconst
+    FROM title_principals p
+    WHERE p.nconst = (
+        SELECT n.nconst
+        FROM name_basics n
+        WHERE n.primaryName = 'Tom Hanks'
+        LIMIT 1
+    )
 );
 ```
 
-#### Result
 
-![08_insert_customer](results/08_insert_customer.png)
+### 07. CTE: Yearly Movie Counts
 
-- CPU utilization climbs toward its maximum (200%) as client concurrency increases, but stays below saturation until around 10 clients, demonstrating lower immediate pressure compared to heavy group-by or join queries.
-- Memory usage rises steadily with higher concurrency, showing a moderate growth trend similar to UPDATE operations; however, there are no abrupt spikes or out-of-memory incidents during this test.
-- TPS (transactions per second) peaks at approximately 7,000 with 20–50 concurrent connections, then gradually decreases as concurrency increases further, indicating the system reaches its write throughput limit and some lock contention emerges.
-- Latency remains very low and stable up to moderate concurrency, only increasing beyond 50 clients, and still stays within acceptable levels (peaking at ~14ms with 90 clients).
-- Compared to complex group-by, join, or update queries, this single-row INSERT operation delivers much higher TPS and lower latency under load, highlighting that single-row insertions are highly efficient and scale well as long as there is minimal contention and index/constraint overhead.
+#### Query
+
+```sql
+WITH yearly_counts AS (
+    SELECT startYear, COUNT(*) AS cnt
+    FROM title_basics
+    WHERE titleType = 'movie'
+    GROUP BY startYear
+)
+SELECT * FROM yearly_counts WHERE startYear >= 2000 ORDER BY cnt DESC;
+```
+
+### 08. Window Function: Top Rated Movie by Year
+
+#### Query
+
+```sql
+SELECT *
+FROM (
+    SELECT
+        b.startYear,
+        b.primaryTitle,
+        r.averageRating,
+        ROW_NUMBER() OVER (PARTITION BY b.startYear ORDER BY r.averageRating DESC) AS rn
+    FROM title_basics b
+    JOIN title_ratings r ON b.tconst = r.tconst
+    WHERE b.titleType = 'movie' AND b.startYear IS NOT NULL
+) sub
+WHERE rn = 1
+ORDER BY startYear;
+```
 
 
-## Summary
-
-- On a t3.medium instance (2 vCPUs, 4GB RAM),the database consistently reaches CPU saturation (200%) well before memory becomes a limiting factor, with TPS and latency plateauing or degrading as concurrency increases.
-- The optimal connection pool size for most queries is in the range of 2–10. Beyond this, there is no gain in throughput, and only latency rises sharply.
-- Simple PK lookups and single-row UPDATE/INSERT operations maintain high efficiency up to 10–50 connections.
-- Pattern-matching (LIKE/ILIKE), GROUP BY, and complex JOIN/aggregation queries result in a dramatic drop in TPS and exponential latency increases, making them unsuitable for high-concurrency, real-time workloads.
-- Memory usage remains well below 1GB even under heavy load, increasing linearly with concurrency and never causing out-of-memory issues during these tests.
-- In practice, for t3.medium-class servers:
-  - The connection pool should be kept at 2–10,
-  - Heavy analytical or pattern-matching queries should be handled via batch processing, caching, or offloaded to specialized systems.

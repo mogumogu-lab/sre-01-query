@@ -1,15 +1,14 @@
 services:
   postgres:
     image: postgres:latest
-    container_name: postgres-test
+    container_name: postgres-sre
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: dvdrental
+      POSTGRES_DB: imdb
     ports:
       - "54321:5432"
     volumes:
-      - ./data:/data
-      - ./test:/test
+      - ../data:/data
     cpus: 2.0
     mem_limit: 4g
