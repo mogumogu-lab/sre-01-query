@@ -23,7 +23,7 @@ execution_times_with_index = [
     654.906,    # Multi-condition Group By (With Index)
     2885.571,   # Director Join (With Index)
     265.851,      # Subquery: Actor Filmography (With Index)
-    10000,      # CTE: Yearly Counts (With Index)
+    44.415,      # CTE: Yearly Counts (With Index)
     10000       # Window Function (With Index)
 ]
 

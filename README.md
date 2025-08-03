@@ -583,6 +583,8 @@ In practice, it’s more important to ensure proper indexing than to avoid subqu
 #### Query
 
 ```sql
+CREATE INDEX idx_basics_type_year ON title_basics (titleType, startYear);
+
 EXPLAIN (ANALYZE, BUFFERS) WITH yearly_counts AS (
     SELECT
         startYear,
@@ -642,25 +644,71 @@ JIT:
 Execution Time: 564.843 ms
 ```
 
+#### Result (with Index)
+
+```plaintext
+Sort  (cost=10695.42..10695.75 rows=132 width=12) (actual time=41.301..44.374 rows=33 loops=1)
+  Sort Key: (count(*)) DESC
+  Sort Method: quicksort  Memory: 26kB
+  Buffers: shared hit=274 read=311
+  ->  Finalize GroupAggregate  (cost=1000.46..10690.77 rows=132 width=12) (actual time=41.263..44.356 rows=33 loops=1)
+        Group Key: title_basics.startyear
+        Buffers: shared hit=274 read=311
+        ->  Gather Merge  (cost=1000.46..10688.13 rows=264 width=12) (actual time=40.987..44.334 rows=56 loops=1)
+              Workers Planned: 2
+              Workers Launched: 2
+              Buffers: shared hit=274 read=311
+              ->  Partial GroupAggregate  (cost=0.43..9657.63 rows=132 width=12) (actual time=0.790..15.324 rows=19 loops=3)
+                    Group Key: title_basics.startyear
+                    Buffers: shared hit=274 read=311
+                    ->  Parallel Index Only Scan using idx_basics_type_year on title_basics  (cost=0.43..8638.28 rows=203607 width=4) (actual time=0.042..8.546 rows=119362 loops=3)
+                          Index Cond: ((titletype = 'movie'::text) AND (startyear >= 2000))
+                          Heap Fetches: 0
+                          Buffers: shared hit=274 read=311
+Planning:
+  Buffers: shared hit=28 read=1
+Planning Time: 0.483 ms
+Execution Time: 44.415 ms
+```
+
+By creating a composite index that matches both the WHERE and GROUP BY columns (titleType, startYear), query performance improved dramatically.
+Even with a GROUP BY, the database can aggregate data very efficiently if the index order aligns with the query, because only the relevant rows are scanned and the grouped field is already sorted within the index.
+
+As a result, execution time dropped from over 560ms to just 44ms.
+
 ### 08. Window Function: Top Rated Movie by Year
 
 #### Query
 
 ```sql
+CREATE INDEX idx_basics_type_year_tconst ON title_basics (titleType, startYear, tconst);
+DROP INDEX IF EXISTS idx_basics_type_year_tconst;
+
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT *
-FROM (
-    SELECT
-        b.startYear,
-        b.primaryTitle,
-        r.averageRating,
-        ROW_NUMBER() OVER (PARTITION BY b.startYear ORDER BY r.averageRating DESC) AS rn
-    FROM title_basics b
-    JOIN title_ratings r ON b.tconst = r.tconst
-    WHERE b.titleType = 'movie' AND b.startYear IS NOT NULL
-) sub
-WHERE rn = 1
-ORDER BY startYear;
+SELECT
+    *
+FROM
+    (
+        SELECT
+            b.startYear,
+            b.primaryTitle,
+            r.averageRating,
+            ROW_NUMBER() OVER (
+                PARTITION BY b.startYear
+                ORDER BY
+                    r.averageRating DESC
+            ) AS rn
+        FROM
+            title_basics b
+            JOIN title_ratings r ON b.tconst = r.tconst
+        WHERE
+            b.titleType = 'movie'
+            AND b.startYear IS NOT NULL
+    ) sub
+WHERE
+    rn = 1
+ORDER BY
+    startYear;
 ```
 
 #### Result
@@ -704,4 +752,26 @@ JIT:
 Execution Time: 1067.106 ms
 ```
 
+#### Result (with Index)
 
+```plaintext
+Subquery Scan on sub  (cost=270411.54..282866.47 rows=425 width=38) (actual time=1024.330..1142.651 rows=131 loops=1)
+  Filter: (sub.rn = 1)
+  Buffers: shared hit=541 read=140234, temp read=12360 written=12435
+  ->  WindowAgg  (cost=270411.54..281803.51 rows=85037 width=38) (actual time=1024.327..1142.634 rows=131 loops=1)
+        Run Condition: (row_number() OVER (?) <= 1)
+        Buffers: shared hit=541 read=140234, temp read=12360 written=12435
+        ->  Gather Merge  (cost=270411.40..280315.36 rows=85037 width=30) (actual time=1024.297..1129.078 rows=333293 loops=1)
+              Workers Planned: 2
+              Workers Launched: 2
+              Buffers: shared hit=541 read=140234, temp read=12360 written=12435
+              ->  Sort  (cost=269411.38..269499.96 rows=35432 width=30) (actual time=1011.479..1031.273 rows=111098 loops=3)
+                    Sort Key: b.startyear, r.averagerating DESC
+                    Sort Method: external merge  Disk: 4080kB
+```
+
+Even with well-designed indexes, window function queries involving PARTITION BY and ORDER BY often require full data scans and large in-memory or disk-based sorts.
+
+Indexes can reduce the number of rows to process in the filtering and join stages, but the window aggregation itself typically requires all relevant rows to be materialized and sorted, resulting in limited overall performance gains.
+
+For heavy window function workloads, pre-aggregation or OLAP solutions are usually more effective.
