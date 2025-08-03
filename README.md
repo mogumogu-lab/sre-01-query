@@ -36,7 +36,12 @@ pgbench -h postgres-test -p 5432 -U postgres -d imdb -c 1 -T 10 -f query/test.sq
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT * FROM title_basics WHERE tconst = 'tt1234567';
+SELECT
+    *
+FROM
+    title_basics
+WHERE
+    tconst = 'tt1234567';
 ```
 
 #### Result
@@ -61,10 +66,18 @@ There is a default index on the `title_basics` table because PostgreSQL automati
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX idx_primarytitle_trgm ON title_basics USING gin (primarytitle gin_trgm_ops);
+
 DROP INDEX IF EXISTS idx_primarytitle_trgm;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT * FROM title_basics WHERE primaryTitle ILIKE '%naruto%' LIMIT 100;
+SELECT
+    *
+FROM
+    title_basics
+WHERE
+    primaryTitle ILIKE '%naruto%'
+LIMIT
+    100;
 ```
 
 #### Result
@@ -126,15 +139,23 @@ This is a massive improvement.
 
 ```sql
 CREATE INDEX idx_ratings_averagerating_desc ON title_ratings (averageRating DESC);
+
 DROP INDEX IF EXISTS idx_ratings_averagerating_desc;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT b.tconst, b.primaryTitle, r.averageRating
-FROM title_basics b
-JOIN title_ratings r ON b.tconst = r.tconst
-WHERE b.titleType = 'movie'
-ORDER BY r.averageRating DESC
-LIMIT 100;
+SELECT
+    b.tconst,
+    b.primaryTitle,
+    r.averageRating
+FROM
+    title_basics b
+    JOIN title_ratings r ON b.tconst = r.tconst
+WHERE
+    b.titleType = 'movie'
+ORDER BY
+    r.averageRating DESC
+LIMIT
+    100;
 ```
 
 #### Result
@@ -192,13 +213,28 @@ Execution Time: 112.311 ms
 #### Query
 
 ```sql
+CREATE INDEX idx_basics_type_year_tconst ON title_basics (titleType, startYear, tconst);
+
+DROP INDEX IF EXISTS idx_basics_type_year_tconst;
+
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT b.genres, b.startYear, COUNT(*) AS movie_count, AVG(r.averageRating) AS avg_rating
-FROM title_basics b
-JOIN title_ratings r ON b.tconst = r.tconst
-WHERE b.titleType = 'movie' AND b.startYear BETWEEN 2010 AND 2020
-GROUP BY b.genres, b.startYear
-ORDER BY movie_count DESC;
+SELECT
+    b.genres,
+    b.startYear,
+    COUNT(*) AS movie_count,
+    AVG(r.averageRating) AS avg_rating
+FROM
+    title_basics b
+    JOIN title_ratings r ON b.tconst = r.tconst
+WHERE
+    b.titleType = 'movie'
+    AND b.startYear BETWEEN 2010
+    AND 2020
+GROUP BY
+    b.genres,
+    b.startYear
+ORDER BY
+    movie_count DESC;
 ```
 
 #### Result
@@ -244,6 +280,55 @@ JIT:
   Options: Inlining false, Optimization false, Expressions true, Deforming true
   Timing: Generation 2.462 ms (Deform 1.139 ms), Inlining 0.000 ms, Optimization 1.249 ms, Emission 26.613 ms, Total 30.324 ms
 Execution Time: 828.021 ms
+```
+
+#### Result (with Index)
+
+```plaintext
+Sort  (cost=290028.97..290118.34 rows=35748 width=56) (actual time=630.234..636.853 rows=5559 loops=1)
+  Sort Key: (count(*)) DESC
+  Sort Method: quicksort  Memory: 535kB
+  Buffers: shared hit=442 read=92737 written=13
+  ->  Finalize GroupAggregate  (cost=282695.32..287325.43 rows=35748 width=56) (actual time=613.095..635.708 rows=5559 loops=1)
+        Group Key: b.genres, b.startyear
+        Buffers: shared hit=439 read=92737 written=13
+        ->  Gather Merge  (cost=282695.32..286506.20 rows=29790 width=56) (actual time=613.075..630.379 rows=11167 loops=1)
+              Workers Planned: 2
+              Workers Launched: 2
+              Buffers: shared hit=439 read=92737 written=13
+              ->  Partial GroupAggregate  (cost=281695.30..282067.67 rows=14895 width=56) (actual time=598.840..606.992 rows=3722 loops=3)
+                    Group Key: b.genres, b.startyear
+                    Buffers: shared hit=439 read=92737 written=13
+                    ->  Sort  (cost=281695.30..281732.54 rows=14895 width=22) (actual time=598.793..600.313 rows=34494 loops=3)
+                          Sort Key: b.genres, b.startyear
+                          Sort Method: quicksort  Memory: 3044kB
+                          Buffers: shared hit=439 read=92737 written=13
+                          Worker 0:  Sort Method: quicksort  Memory: 2177kB
+                          Worker 1:  Sort Method: quicksort  Memory: 2980kB
+                          ->  Parallel Hash Join  (cost=262037.88..280662.89 rows=14895 width=22) (actual time=405.851..532.884 rows=34494 loops=3)
+                                Hash Cond: (r.tconst = b.tconst)
+                                Buffers: shared hit=409 read=92737 written=13
+                                ->  Parallel Seq Scan on title_ratings r  (cost=0.00..16878.26 rows=665426 width=16) (actual time=0.038..40.404 rows=532341 loops=3)
+                                      Buffers: shared read=10224
+                                ->  Parallel Hash  (cost=260661.02..260661.02 rows=110149 width=26) (actual time=399.951..399.952 rows=61761 loops=3)
+                                      Buckets: 524288  Batches: 1  Memory Usage: 15584kB
+                                      Buffers: shared hit=385 read=82513 written=13
+                                      ->  Parallel Bitmap Heap Scan on title_basics b  (cost=9575.12..260661.02 rows=110149 width=26) (actual time=38.978..381.595 rows=61761 loops=3)
+                                            Recheck Cond: ((titletype = 'movie'::text) AND (startyear >= 2010) AND (startyear <= 2020))
+                                            Rows Removed by Index Recheck: 720621
+                                            Heap Blocks: exact=14586 lossy=9850
+                                            Buffers: shared hit=385 read=82513 written=13
+                                            ->  Bitmap Index Scan on idx_basics_type_year_tconst  (cost=0.00..9509.03 rows=264358 width=0) (actual time=29.221..29.221 rows=185282 loops=1)
+                                                  Index Cond: ((titletype = 'movie'::text) AND (startyear >= 2010) AND (startyear <= 2020))
+                                                  Buffers: shared read=916
+Planning:
+  Buffers: shared hit=112 read=11
+Planning Time: 1.364 ms
+JIT:
+  Functions: 57
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 2.501 ms (Deform 1.175 ms), Inlining 0.000 ms, Optimization 1.899 ms, Emission 27.589 ms, Total 31.989 ms
+Execution Time: 654.906 ms
 ```
 
 ### 05. Multi-table Join: Movie Count by Director

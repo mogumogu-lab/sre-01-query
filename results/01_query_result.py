@@ -40,11 +40,6 @@ bar_no_index = plt.barh(y - height/2, execution_times_no_index_rev, height, labe
 # With Index
 bar_with_index = plt.barh(y + height/2, execution_times_with_index_rev, height, label='With Index', color='#99CCFF')
 
-# No Index
-plt.barh(y - height/2, execution_times_no_index_rev, height, label='No Index', color='#FF9999')
-# With Index
-plt.barh(y + height/2, execution_times_with_index_rev, height, label='With Index', color='#99CCFF')
-
 plt.yticks(y, query_names_rev)
 
 plt.axvline(200, color='blue', linestyle='--', label='200ms Optimal') # 200ms
