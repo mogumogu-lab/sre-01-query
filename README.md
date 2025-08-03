@@ -768,6 +768,33 @@ Subquery Scan on sub  (cost=270411.54..282866.47 rows=425 width=38) (actual time
               ->  Sort  (cost=269411.38..269499.96 rows=35432 width=30) (actual time=1011.479..1031.273 rows=111098 loops=3)
                     Sort Key: b.startyear, r.averagerating DESC
                     Sort Method: external merge  Disk: 4080kB
+                    Buffers: shared hit=541 read=140234, temp read=12360 written=12435
+                    Worker 0:  Sort Method: external merge  Disk: 4328kB
+                    Worker 1:  Sort Method: external merge  Disk: 4328kB
+                    ->  Parallel Hash Join  (cost=239560.99..266734.00 rows=35432 width=30) (actual time=823.871..950.412 rows=111098 loops=3)
+                          Hash Cond: (r.tconst = b.tconst)
+                          Buffers: shared hit=513 read=140234, temp read=10768 written=10840
+                          ->  Parallel Seq Scan on title_ratings r  (cost=0.00..16878.26 rows=665426 width=16) (actual time=0.058..70.876 rows=532341 loops=3)
+                                Buffers: shared read=10224
+                          ->  Parallel Hash  (cost=234237.68..234237.68 rows=262025 width=34) (actual time=640.815..640.817 rows=205074 loops=3)
+                                Buckets: 131072  Batches: 8  Memory Usage: 6272kB
+                                Buffers: shared hit=445 read=130010, temp written=3560
+                                ->  Parallel Bitmap Heap Scan on title_basics b  (cost=8622.24..234237.68 rows=262025 width=34) (actual time=38.840..559.939 rows=205074 loops=3)
+                                      Recheck Cond: ((titletype = 'movie'::text) AND (startyear IS NOT NULL))
+                                      Rows Removed by Index Recheck: 1359533
+                                      Heap Blocks: exact=19530 lossy=21019
+                                      Buffers: shared hit=445 read=130010
+                                      ->  Bitmap Index Scan on idx_basics_type_year  (cost=0.00..8465.02 rows=628859 width=0) (actual time=34.138..34.139 rows=615221 loops=1)
+                                            Index Cond: ((titletype = 'movie'::text) AND (startyear IS NOT NULL))
+                                            Buffers: shared hit=309 read=225
+Planning:
+  Buffers: shared hit=66 read=10
+Planning Time: 4.892 ms
+JIT:
+  Functions: 42
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 1.847 ms (Deform 0.851 ms), Inlining 0.000 ms, Optimization 1.158 ms, Emission 19.518 ms, Total 22.522 ms
+Execution Time: 1144.054 ms
 ```
 
 Even with well-designed indexes, window function queries involving PARTITION BY and ORDER BY often require full data scans and large in-memory or disk-based sorts.

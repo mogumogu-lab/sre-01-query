@@ -22,25 +22,23 @@ execution_times_with_index = [
     112.311,    # Join: Top Rated Movies (With Index)
     654.906,    # Multi-condition Group By (With Index)
     2885.571,   # Director Join (With Index)
-    265.851,      # Subquery: Actor Filmography (With Index)
-    44.415,      # CTE: Yearly Counts (With Index)
-    10000       # Window Function (With Index)
+    265.851,    # Subquery: Actor Filmography (With Index)
+    44.415,     # CTE: Yearly Counts (With Index)
+    1144.054    # Window Function (With Index)
 ]
 
-query_names_rev = query_names[::-1]
-execution_times_no_index_rev = execution_times_no_index[::-1]
-execution_times_with_index_rev = execution_times_with_index[::-1]
 y = np.arange(len(query_names))
 height = 0.35
 
 plt.figure(figsize=(14, 6))
 
 # No Index
-bar_no_index = plt.barh(y - height/2, execution_times_no_index_rev, height, label='No Index', color='#FF9999')
+bar_no_index = plt.barh(y - height/2, execution_times_no_index, height, label='No Index', color='#FF9999')
 # With Index
-bar_with_index = plt.barh(y + height/2, execution_times_with_index_rev, height, label='With Index', color='#99CCFF')
+bar_with_index = plt.barh(y + height/2, execution_times_with_index, height, label='With Index', color='#99CCFF')
 
-plt.yticks(y, query_names_rev)
+plt.yticks(y, query_names)
+plt.gca().invert_yaxis()
 
 plt.axvline(200, color='blue', linestyle='--', label='200ms Optimal') # 200ms
 plt.axvline(1000, color='red', linestyle='--', label='1,000ms Warning') # 1000ms
