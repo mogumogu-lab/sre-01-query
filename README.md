@@ -125,6 +125,9 @@ This is a massive improvement.
 #### Query
 
 ```sql
+CREATE INDEX idx_ratings_averagerating_desc ON title_ratings (averageRating DESC);
+DROP INDEX IF EXISTS idx_ratings_averagerating_desc;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT b.tconst, b.primaryTitle, r.averageRating
 FROM title_basics b
@@ -162,6 +165,26 @@ Planning:
   Buffers: shared hit=8 read=8
 Planning Time: 2.485 ms
 Execution Time: 304.313 ms
+```
+
+#### Result (with Index)
+
+```plaintext
+Limit  (cost=0.86..1745.17 rows=100 width=36) (actual time=13.405..112.282 rows=100 loops=1)
+  Buffers: shared hit=43211 read=3682 written=1
+  ->  Nested Loop  (cost=0.86..1689992.00 rows=96886 width=36) (actual time=13.404..112.268 rows=100 loops=1)
+        Buffers: shared hit=43211 read=3682 written=1
+        ->  Index Scan using idx_ratings_averagerating_desc on title_ratings r  (cost=0.43..81418.53 rows=1597023 width=16) (actual time=0.040..22.990 rows=10508 loops=1)
+              Buffers: shared hit=1302 read=3559 written=1
+        ->  Index Scan using title_basics_pkey on title_basics b  (cost=0.43..1.01 rows=1 width=30) (actual time=0.008..0.008 rows=0 loops=10508)
+              Index Cond: (tconst = r.tconst)
+              Filter: (titletype = 'movie'::text)
+              Rows Removed by Filter: 1
+              Buffers: shared hit=41909 read=123
+Planning:
+  Buffers: shared hit=237 read=6
+Planning Time: 1.616 ms
+Execution Time: 112.311 ms
 ```
 
 ### 04. Multi-condition & Group By: Movie Count by Genre and Year
