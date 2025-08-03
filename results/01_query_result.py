@@ -20,9 +20,9 @@ execution_times_with_index = [
     0.045,      # PK Select (With Index == No Index, PK)
     3.3,        # Pattern Match (With Index)
     112.311,    # Join: Top Rated Movies (With Index)
-    10000,      # Multi-condition Group By (With Index)
-    10000,      # Director Join (With Index)
-    10000,      # Subquery: Actor Filmography (With Index)
+    654.906,    # Multi-condition Group By (With Index)
+    2885.571,   # Director Join (With Index)
+    265.851,      # Subquery: Actor Filmography (With Index)
     10000,      # CTE: Yearly Counts (With Index)
     10000       # Window Function (With Index)
 ]

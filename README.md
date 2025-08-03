@@ -331,19 +331,41 @@ JIT:
 Execution Time: 654.906 ms
 ```
 
+Even with proper indexing, GROUP BY queries in large, multi-table joins can still be slow due to fundamental database limitations. While indexes help filter and join rows faster, the GROUP BY operation itself often requires sorting or hashing large result sets in memory or on disk. This process can become a bottleneck, especially when aggregating millions of rows or joining large tables.
+
+In the provided example, even after indexing, the query execution plan shows that most of the time is spent in the hash aggregation and external sorting steps, not in data retrieval. This is a common structural limitation of relational databases: indexes accelerate filtering and joins, but cannot fully optimize aggregation or sorting of massive intermediate results.
+
+For high-cardinality aggregations or real-time analytics at scale, it's often more efficient to use pre-aggregated data, materialized views, or OLAP systems designed for fast, large-scale group by queries.
+
 ### 05. Multi-table Join: Movie Count by Director
 
 #### Query
 
 ```sql
+-- title_basics: WHERE+JOIN 복합 인덱스
+CREATE INDEX idx_basics_type_tconst ON title_basics (titleType, tconst);
+
+-- title_crew: tconst(조인) 인덱스
+CREATE INDEX idx_crew_tconst ON title_crew (tconst);
+
+DROP INDEX IF EXISTS idx_basics_type_tconst;
+DROP INDEX IF EXISTS idx_crew_tconst;
+
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT c.directors, COUNT(*) AS film_count
-FROM title_crew c
-JOIN title_basics b ON c.tconst = b.tconst
-WHERE b.titleType = 'movie'
-GROUP BY c.directors
-ORDER BY film_count DESC
-LIMIT 10;
+SELECT
+    c.directors,
+    COUNT(*) AS film_count
+FROM
+    title_crew c
+    JOIN title_basics b ON c.tconst = b.tconst
+WHERE
+    b.titleType = 'movie'
+GROUP BY
+    c.directors
+ORDER BY
+    film_count DESC
+LIMIT
+    10;
 ```
 
 #### Result
@@ -396,24 +418,89 @@ JIT:
 Execution Time: 4363.620 ms
 ```
 
+#### Result (with Index)
+
+```plaintext
+Limit  (cost=250584.55..250584.58 rows=10 width=21) (actual time=2790.120..2862.210 rows=10 loops=1)
+  Buffers: shared hit=214 read=92924, temp read=60399 written=62890
+  ->  Sort  (cost=250584.55..250677.23 rows=37069 width=21) (actual time=2781.411..2853.500 rows=10 loops=1)
+        Sort Key: (count(*)) DESC
+        Sort Method: top-N heapsort  Memory: 26kB
+        Buffers: shared hit=214 read=92924, temp read=60399 written=62890
+        ->  Finalize HashAggregate  (cost=249412.82..249783.51 rows=37069 width=21) (actual time=2658.480..2823.802 rows=264002 loops=1)
+              Group Key: c.directors
+              Batches: 21  Memory Usage: 9521kB  Disk Usage: 15248kB
+              Buffers: shared hit=211 read=92924, temp read=60399 written=62890
+              ->  Gather  (cost=241257.64..249042.13 rows=74138 width=21) (actual time=2477.420..2599.729 rows=364832 loops=1)
+                    Workers Planned: 2
+                    Workers Launched: 2
+                    Buffers: shared hit=211 read=92924, temp read=58095 written=59026
+                    ->  Partial HashAggregate  (cost=240257.64..240628.33 rows=37069 width=21) (actual time=2463.570..2504.082 rows=121611 loops=3)
+                          Group Key: c.directors
+                          Batches: 5  Memory Usage: 8241kB  Disk Usage: 1600kB
+                          Buffers: shared hit=211 read=92924, temp read=58095 written=59026
+                          Worker 0:  Batches: 5  Memory Usage: 8241kB  Disk Usage: 3424kB
+                          Worker 1:  Batches: 5  Memory Usage: 8241kB  Disk Usage: 3400kB
+                          ->  Parallel Hash Join  (cost=27416.44..238764.96 rows=298535 width=13) (actual time=1719.214..2317.258 rows=240605 loops=3)
+                                Hash Cond: (c.tconst = b.tconst)
+                                Buffers: shared hit=211 read=92924, temp read=57426 written=57492
+                                ->  Parallel Seq Scan on title_crew c  (cost=0.00..139305.12 rows=4920912 width=23) (actual time=0.056..571.767 rows=3936730 loops=3)
+                                      Buffers: shared hit=193 read=89903
+                                ->  Parallel Hash  (cost=22226.75..22226.75 rows=298535 width=10) (actual time=121.827..121.828 rows=240605 loops=3)
+                                      Buckets: 262144  Batches: 8  Memory Usage: 6368kB
+                                      Buffers: shared hit=18 read=3021, temp written=2372
+                                      ->  Parallel Index Only Scan using idx_basics_type_tconst on title_basics b  (cost=0.56..22226.75 rows=298535 width=10) (actual time=2.841..77.762 rows=240605 loops=3)
+                                            Index Cond: (titletype = 'movie'::text)
+                                            Heap Fetches: 0
+                                            Buffers: shared hit=18 read=3021
+Planning:
+  Buffers: shared hit=150 read=16
+Planning Time: 1.459 ms
+JIT:
+  Functions: 53
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 2.429 ms (Deform 0.460 ms), Inlining 0.000 ms, Optimization 1.672 ms, Emission 24.407 ms, Total 28.508 ms
+Execution Time: 2885.571 ms
+```
+
+Although indexing improved the performance of the JOIN and WHERE clauses, the query is still slow because the GROUP BY field (directors) contains large text values. PostgreSQL’s btree index cannot be used for columns where the row size exceeds a certain limit, so traditional indexing cannot optimize aggregation on this field. As a result, the GROUP BY operation becomes a bottleneck due to heavy memory and disk usage during sorting and aggregation.
+
+To overcome this limitation, it’s recommended to either normalize the schema (by splitting large text arrays into separate mapping tables), or to use pre-aggregated tables or materialized views for frequent analytics queries. In production environments, these approaches are much more scalable and efficient than relying solely on indexes for heavy aggregation queries.
+
 ### 06. Subquery: Filmography of a Specific Actor
 
 #### Query
 
 ```sql
+CREATE INDEX idx_name_primaryname ON name_basics (primaryName);
+CREATE INDEX idx_principals_nconst ON title_principals (nconst);
+
+DROP INDEX IF EXISTS idx_name_primaryname;
+DROP INDEX IF EXISTS idx_principals_nconst;
+
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT b.primaryTitle
-FROM title_basics b
-WHERE b.tconst IN (
-    SELECT p.tconst
-    FROM title_principals p
-    WHERE p.nconst = (
-        SELECT n.nconst
-        FROM name_basics n
-        WHERE n.primaryName = 'Tom Hanks'
-        LIMIT 1
-    )
-);
+SELECT
+    b.primaryTitle
+FROM
+    title_basics b
+WHERE
+    b.tconst IN (
+        SELECT
+            p.tconst
+        FROM
+            title_principals p
+        WHERE
+            p.nconst = (
+                SELECT
+                    n.nconst
+                FROM
+                    name_basics n
+                WHERE
+                    n.primaryName = 'Tom Hanks'
+                LIMIT
+                    1
+            )
+    );
 ```
 
 #### Result
@@ -457,20 +544,64 @@ JIT:
 Execution Time: 15510.881 ms
 ```
 
+#### Result (with Index)
+
+```plaintext
+Nested Loop  (cost=2546.37..8170.42 rows=668 width=20) (actual time=117.118..265.725 rows=1013 loops=1)
+  Buffers: shared hit=2163 read=2834
+  InitPlan 1
+    ->  Limit  (cost=0.56..5.24 rows=1 width=10) (actual time=0.525..0.526 rows=1 loops=1)
+          Buffers: shared read=5
+          ->  Index Scan using idx_name_primaryname on name_basics n  (cost=0.56..28.66 rows=6 width=10) (actual time=0.524..0.524 rows=1 loops=1)
+                Index Cond: (primaryname = 'Tom Hanks'::text)
+                Buffers: shared read=5
+  ->  HashAggregate  (cost=2540.69..2547.36 rows=667 width=10) (actual time=116.836..117.070 rows=1013 loops=1)
+        Group Key: p.tconst
+        Batches: 1  Memory Usage: 129kB
+        Buffers: shared read=945
+        ->  Index Scan using idx_principals_nconst on title_principals p  (cost=0.57..2539.02 rows=668 width=10) (actual time=0.856..116.324 rows=1114 loops=1)
+              Index Cond: (nconst = (InitPlan 1).col1)
+              Buffers: shared read=945
+  ->  Index Scan using title_basics_pkey on title_basics b  (cost=0.43..8.42 rows=1 width=30) (actual time=0.146..0.146 rows=1 loops=1013)
+        Index Cond: (tconst = p.tconst)
+        Buffers: shared hit=2163 read=1889
+Planning:
+  Buffers: shared hit=66 read=5 dirtied=2
+Planning Time: 1.148 ms
+Execution Time: 265.851 ms
+```
+
+After adding indexes to the relevant columns used in the subqueries, the query performance improved dramatically—from over 15 seconds to just 266 milliseconds.
+
+This is because the subqueries allow us to apply targeted single-column indexes (primaryName and nconst), enabling efficient lookups at each stage.
+As a result, using subqueries is not inherently bad for performance; as long as the right indexes are in place for frequently queried fields within subqueries, performance can be fully optimized.
+
+In practice, it’s more important to ensure proper indexing than to avoid subqueries altogether.
 
 ### 07. CTE: Yearly Movie Counts
 
 #### Query
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS)
-WITH yearly_counts AS (
-    SELECT startYear, COUNT(*) AS cnt
-    FROM title_basics
-    WHERE titleType = 'movie'
-    GROUP BY startYear
+EXPLAIN (ANALYZE, BUFFERS) WITH yearly_counts AS (
+    SELECT
+        startYear,
+        COUNT(*) AS cnt
+    FROM
+        title_basics
+    WHERE
+        titleType = 'movie'
+    GROUP BY
+        startYear
 )
-SELECT * FROM yearly_counts WHERE startYear >= 2000 ORDER BY cnt DESC;
+SELECT
+    *
+FROM
+    yearly_counts
+WHERE
+    startYear >= 2000
+ORDER BY
+    cnt DESC;
 ```
 
 #### Result
